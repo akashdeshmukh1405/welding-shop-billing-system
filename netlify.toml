@@ -1,0 +1,26 @@
+# ==============================================================================
+# NETLIFY DEPLOYMENT CONFIGURATION
+# Application: JAI MATA DI STEEL FURNITURE & RAILING Billing System
+# Stack: Next.js 15 (App Router, SSR, Middleware) + React 19 + Supabase
+# ==============================================================================
+
+[build]
+  command = "prisma generate && next build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "20"
+  # Build-time placeholder allows Prisma Client compilation in clean CI without hardcoding secrets
+  DATABASE_URL = "postgresql://postgres:placeholder@localhost:5432/postgres"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# HTTP Security Headers
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    X-XSS-Protection = "1; mode=block"
+    Referrer-Policy = "strict-origin-when-cross-origin"

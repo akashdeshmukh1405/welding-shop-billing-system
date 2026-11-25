@@ -2,6 +2,22 @@ import http from "http";
 import fs from "fs";
 import crypto from "crypto";
 
+// Load .env.local if present so test client signs with the exact active server secret
+if (fs.existsSync(".env.local")) {
+  const envContent = fs.readFileSync(".env.local", "utf8");
+  for (const line of envContent.split("\n")) {
+    const trimmed = line.trim();
+    if (trimmed && !trimmed.startsWith("#") && trimmed.includes("=")) {
+      const idx = trimmed.indexOf("=");
+      const key = trimmed.slice(0, idx).trim();
+      const val = trimmed.slice(idx + 1).trim().replace(/^["']|["']$/g, "");
+      if (key && !process.env[key]) {
+        process.env[key] = val;
+      }
+    }
+  }
+}
+
 const AUTH_SECRET = process.env.AUTH_SECRET || "jaimatadi_secure_session_secret_2026_welding";
 const PORT = 3000;
 
