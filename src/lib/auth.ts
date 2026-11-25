@@ -72,17 +72,22 @@ export function createSessionToken(user: SessionUser): string {
  */
 export function verifySessionToken(token: string): { valid: boolean; user?: SessionUser } {
   try {
-    if (!token || !token.includes(".")) return { valid: false };
-    const [payloadB64, signature] = token.split(".");
+    if (!token || typeof token !== "string" || !token.includes(".")) return { valid: false };
+    const parts = token.split(".");
+    if (parts.length !== 2) return { valid: false };
+    const [payloadB64, signature] = parts;
     if (!payloadB64 || !signature) return { valid: false };
 
     const expectedSig = crypto.createHmac("sha256", AUTH_SECRET).update(payloadB64).digest("base64url");
-    if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSig))) {
+    const sigBuf = Buffer.from(signature);
+    const expBuf = Buffer.from(expectedSig);
+
+    if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
       return { valid: false };
     }
 
     const payload = JSON.parse(Buffer.from(payloadB64, "base64url").toString("utf8"));
-    if (Date.now() > payload.expiresAt) {
+    if (!payload || !payload.expiresAt || typeof payload.expiresAt !== "number" || Date.now() > payload.expiresAt) {
       return { valid: false };
     }
 

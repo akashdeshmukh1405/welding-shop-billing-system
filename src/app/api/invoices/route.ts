@@ -3,6 +3,7 @@ import { z } from "zod";
 import { dbRepository } from "@/services/dbRepository";
 import { storageService } from "@/services/storageService";
 import { PaymentMethod } from "@prisma/client";
+import { verifyApiAuth } from "@/lib/auth";
 
 const CreateInvoiceSchema = z.object({
   customerName: z.string().min(2, "Customer name is required"),
@@ -32,6 +33,14 @@ const CreateInvoiceSchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
+    const auth = verifyApiAuth(request);
+    if (!auth.authorized) {
+      return NextResponse.json(
+        { success: false, message: auth.error || "Authentication required" },
+        { status: 401 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const query = searchParams.get("query");
     const status = searchParams.get("status");
@@ -63,6 +72,14 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = verifyApiAuth(request);
+    if (!auth.authorized) {
+      return NextResponse.json(
+        { success: false, message: auth.error || "Authentication required" },
+        { status: 401 }
+      );
+    }
+
     const json = await request.json();
     const validated = CreateInvoiceSchema.parse(json);
 

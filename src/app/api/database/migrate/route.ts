@@ -1,8 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabaseClient, isServerSupabaseConfigured } from "@/lib/supabase/server";
+import { verifyApiAuth } from "@/lib/auth";
 
 export async function POST(request: NextRequest) {
   try {
+    // Defense-in-depth: Verify shop owner authorization before accessing database
+    const auth = verifyApiAuth(request);
+    if (!auth.authorized) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: auth.error || "Authentication required. Shop owner access only.",
+        },
+        { status: 401 }
+      );
+    }
+
     if (!isServerSupabaseConfigured()) {
       return NextResponse.json(
         {

@@ -3,6 +3,8 @@ import { formatCurrency, sanitizePhone } from "@/lib/utils";
 import { pdfService } from "@/services/pdfService";
 import { storageService } from "./../../../../services/storageService";
 import { Invoice } from "@/types";
+import { verifyApiAuth } from "@/lib/auth";
+import { getOrGenerateInvoiceSignedUrl } from "@/lib/supabase/storage";
 
 /**
  * Sanitizes any secret tokens from error strings so secrets never leak
@@ -66,6 +68,21 @@ function mapMetaError(metaError: any, httpStatus: number) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Defense-in-depth: Verify shop authorization
+    const auth = verifyApiAuth(request);
+    if (!auth.authorized) {
+      return NextResponse.json(
+        {
+          success: false,
+          httpStatus: 401,
+          errorType: "UNAUTHORIZED",
+          safeError: auth.error || "Authentication required. Please log in.",
+          suggestedAction: "Please log in to your shop owner account before sending WhatsApp invoices.",
+        },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
     const {
       invoiceId,
@@ -225,6 +242,17 @@ Please find your official tax invoice document #${invNo} attached.
       pdfBuffer = pdfService.getInvoicePDFBuffer(constructedInvoice);
     }
 
+    // Optional: Upload to private Supabase storage and create secure 7-day signed URL
+    let signedInvoiceUrl: string | null = null;
+    try {
+      signedInvoiceUrl = await getOrGenerateInvoiceSignedUrl(invNo, pdfBuffer);
+      if (signedInvoiceUrl) {
+        caption += `\n\nDirect PDF Link (Valid for 7 days): ${signedInvoiceUrl}`;
+      }
+    } catch {
+      // Graceful fallback: Meta Media upload will deliver the document directly
+    }
+
     // 4. Step 1: Upload the PDF document to Meta Media API
     const formData = new FormData();
     const pdfBlob = new Blob([new Uint8Array(pdfBuffer)], { type: "application/pdf" });
@@ -380,11 +408,13 @@ Please find your official tax invoice document #${invNo} attached.
       messageId: messageId,
       documentFilename,
       recipient: fullNumber,
+      signedInvoiceUrl,
       message: `Invoice PDF document (${documentFilename}) dispatched successfully on WhatsApp to +${fullNumber}.`,
       status: "accepted_by_meta",
       data: {
         messaging_product: "whatsapp",
         messageId,
+        signedInvoiceUrl,
       },
     });
   } catch (error: any) {

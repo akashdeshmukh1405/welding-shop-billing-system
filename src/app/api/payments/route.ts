@@ -3,6 +3,7 @@ import { z } from "zod";
 import { dbRepository } from "@/services/dbRepository";
 import { storageService } from "@/services/storageService";
 import { PaymentMethod } from "@prisma/client";
+import { verifyApiAuth } from "@/lib/auth";
 
 const CollectPaymentSchema = z.object({
   invoiceId: z.string().min(1, "Invoice ID is required"),
@@ -12,8 +13,16 @@ const CollectPaymentSchema = z.object({
   transactionId: z.string().optional(),
 });
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const auth = verifyApiAuth(request);
+    if (!auth.authorized) {
+      return NextResponse.json(
+        { success: false, message: auth.error || "Authentication required" },
+        { status: 401 }
+      );
+    }
+
     const payments = storageService.getPayments();
     return NextResponse.json({ success: true, data: payments });
   } catch (error: any) {
@@ -26,6 +35,14 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = verifyApiAuth(request);
+    if (!auth.authorized) {
+      return NextResponse.json(
+        { success: false, message: auth.error || "Authentication required" },
+        { status: 401 }
+      );
+    }
+
     const json = await request.json();
     const validated = CollectPaymentSchema.parse(json);
 
