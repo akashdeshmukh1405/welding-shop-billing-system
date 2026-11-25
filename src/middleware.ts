@@ -9,6 +9,7 @@ const EXACT_PUBLIC_PATHS = [
   "/login",
   "/favicon.ico",
   "/manifest.json",
+  "/sw.js",
   "/api/whatsapp/webhook",
 ];
 
