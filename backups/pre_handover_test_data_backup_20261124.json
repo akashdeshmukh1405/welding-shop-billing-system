@@ -1,0 +1,13 @@
+{
+  "backupTitle": "Pre-Handover Test Data Complete Backup",
+  "shopName": "JAI MATA DI STEEL FURNITURE & RAILING",
+  "proprietor": "Prop. Vaibhav Wagh",
+  "phone": "9561482326",
+  "upiId": "9561482326@ybl",
+  "timestamp": "2026-11-24T23:44:00.000Z",
+  "description": "Preserved test dataset containing demo customers (Rahul Patil, Sanjay Deshmukh, Suresh Jadhav, Vikram Shinde, Ramesh Kulkarni, Ramesh Patil, Suresh Patil, Amit Sharma), test invoices INV-1001 to INV-1008, and test payment records prior to clean customer handover.",
+  "invoicesCount": 6,
+  "customersCount": 5,
+  "paymentsCount": 5,
+  "productsCount": 10
+}

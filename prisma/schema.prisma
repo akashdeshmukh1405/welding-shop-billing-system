@@ -1,0 +1,184 @@
+// Prisma Schema for Real-World Welding & Fabrication Shop Billing & POS System
+// Configured for PostgreSQL in production
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  CASHIER
+  OPERATOR
+}
+
+enum PaymentStatus {
+  PENDING
+  PARTIAL
+  PAID
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  UPI
+  BANK_TRANSFER
+  CARD
+  CHEQUE
+  OTHER
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         Role     @default(ADMIN)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  paymentsRecorded Payment[]
+  invoicesCreated  Invoice[]
+
+  @@map("users")
+}
+
+model Customer {
+  id           String   @id @default(uuid())
+  name         String
+  phone        String   @unique
+  email        String?
+  address      String?
+  gstNumber    String?
+  totalBilled  Float    @default(0)
+  totalPaid    Float    @default(0)
+  totalPending Float    @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  invoices Invoice[]
+  payments Payment[]
+
+  @@index([phone])
+  @@index([name])
+  @@map("customers")
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  category    String   @default("FABRICATION")
+  unit        String   @default("sq ft")
+  unitPrice   Float
+  hsnCode     String?
+  gstRate     Float    @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  invoiceItems InvoiceItem[]
+
+  @@index([name])
+  @@index([category])
+  @@map("products")
+}
+
+model Invoice {
+  id                   String        @id @default(uuid())
+  invoiceNumber        String        @unique
+  customerId           String
+  customer             Customer      @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  date                 DateTime      @default(now())
+  dueDate              DateTime?
+  primaryPaymentMethod PaymentMethod @default(CASH)
+  subtotal             Float
+  discountAmount       Float         @default(0)
+  taxAmount            Float         @default(0)
+  grandTotal           Float
+  paidAmount           Float         @default(0)
+  pendingAmount        Float
+  status               PaymentStatus @default(PENDING)
+  notes                String?
+  createdById          String?
+  createdBy            User?         @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  items    InvoiceItem[]
+  payments Payment[]
+
+  @@index([invoiceNumber])
+  @@index([customerId])
+  @@index([status])
+  @@index([date])
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id          String   @id @default(uuid())
+  invoiceId   String
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  productId   String?
+  product     Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  name        String
+  description String?
+  quantity    Float
+  unit        String
+  unitPrice   Float
+  taxRate     Float    @default(0)
+  taxAmount   Float    @default(0)
+  total       Float
+  createdAt   DateTime @default(now())
+
+  @@index([invoiceId])
+  @@map("invoice_items")
+}
+
+model Payment {
+  id            String        @id @default(uuid())
+  invoiceId     String
+  invoice       Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  customerId    String
+  customer      Customer      @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  amount        Float
+  paymentMethod PaymentMethod @default(CASH)
+  referenceNote String?
+  transactionId String?
+  date          DateTime      @default(now())
+  time          String?
+  receivedById  String?
+  receivedBy    User?         @relation(fields: [receivedById], references: [id], onDelete: SetNull)
+  createdAt     DateTime      @default(now())
+
+  @@index([invoiceId])
+  @@index([customerId])
+  @@index([date])
+  @@map("payments")
+}
+
+model ShopSettings {
+  id                   String   @id @default(uuid())
+  shopName             String   @default("Jay Mata Di Steel Furniture & Railing")
+  tagline              String?  @default("SS FURNITURE • MODULAR KITCHEN TROLLEY • SS RAILING • SS BED • GRILLS")
+  shopAddress          String   @default("Naggaon Road, Bodwad, Dist. Jalgaon, Maharashtra")
+  shopPhone            String   @default("9561482326")
+  altPhone             String?  @default("9561482326")
+  email                String?  @default("jaymatadisteel.bodwad@gmail.com")
+  gstNumber            String?  @default("27AAAPJ9561F1Z8")
+  upiId                String?  @default("9561482326@upi")
+  upiQrUrl             String?
+  invoicePrefix        String   @default("INV-")
+  nextInvoiceNumber    Int      @default(1001)
+  termsAndConditions   String?  @default("1. 50% advance required on order confirmation.\n2. Balance payment on delivery/installation.\n3. Goods once fabricated cannot be returned.\n4. Subject to Bodwad / Jalgaon jurisdiction.")
+  invoiceFooterMessage String?  @default("धन्यवाद! पुन्हा भेट द्या. दर्जेदार स्टेनलेस स्टील फर्निचर व रेलिंगची हमी.")
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@map("shop_settings")
+}
